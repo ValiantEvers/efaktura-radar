@@ -21,6 +21,9 @@ Et DNS-timeout skal aldri bli til «kunden mistet EHF-tilgang». Falske alarmer
 ødelegger tilliten til et overvåkingsprodukt langt raskere enn tapte varsler.
 Status som blir *dårligere* krever derfor ``confirmations`` påfølgende like
 observasjoner (standard 2). Forbedringer logges umiddelbart — de er ufarlige.
+Observasjonene må dessuten kunne *se* det de bekrefter: en dns-runde ser ikke
+dokumenttyper, så et ubekreftet «kan_motta» verken nullstiller eller bekrefter
+en ventende ``registrert_uten_faktura`` fra SMP-runden (``CheckResult.verified``).
 
 **3. Feil skriver aldri en endring.**
 Timeout, SERVFAIL og HTTP-feil teller opp `consecutive_errors` og logges på
@@ -44,6 +47,7 @@ from pathlib import Path
 from typing import Any, Self
 
 from .check import CheckResult, Status
+from .orgnr import InvalidOrgnr, normalise
 
 __all__ = ["Change", "ChangeKind", "Coverage", "Store", "utc_now"]
 
@@ -334,32 +338,52 @@ class Store:
     ) -> list[Change]:
         old_status: str | None = row["status"]
         changes: list[Change] = []
-        commit_status = True
 
-        if old_status is not None and r.status != old_status:
-            if _is_regression(old_status, r.status):
+        # En dns-runde ser ikke dokumenttyper. Et ubekreftet «kan_motta» kan
+        # derfor ikke motbevise at fakturastøtten mangler — behold SMP-rundens
+        # funn til en ny SMP-runde sier noe annet. Uten dette nullstiller
+        # mandagens dns-runde søndagens ventende regresjon, og
+        # «mistet_fakturastotte» kan aldri bekreftes.
+        status = r.status
+        if (
+            not r.verified
+            and status == Status.CAN_RECEIVE
+            and old_status == Status.REGISTERED_NO_INVOICE
+        ):
+            status = Status.REGISTERED_NO_INVOICE
+
+        if old_status is None:
+            # Raden oppsto via en feil eller berikelse og har aldri hatt status.
+            # Dette er den reelle førsteobservasjonen — uten en logget endring
+            # mangler tidsserien sitt ankerpunkt, og status_at() svarer None.
+            kind = (
+                ChangeKind.NEW_CAN_RECEIVE
+                if status == Status.CAN_RECEIVE
+                else ChangeKind.NEW_CANNOT_RECEIVE
+            )
+            changes.append(Change(r.orgnr, now, kind, "status", None, status, r.name))
+        elif status != old_status:
+            if _is_regression(old_status, status):
                 # Regresjon: krev bekreftelse. Se regel 2 i modulteksten.
-                pending = row["pending_count"] + 1 if row["pending_status"] == r.status else 1
+                pending = row["pending_count"] + 1 if row["pending_status"] == status else 1
                 if pending < self.confirmations:
                     self.conn.execute(
                         "UPDATE participant SET last_checked = ?, last_ok = ?,"
                         " pending_status = ?, pending_count = ?, consecutive_errors = 0"
                         " WHERE orgnr = ?",
-                        (now, now, r.status, pending, r.orgnr),
+                        (now, now, status, pending, r.orgnr),
                     )
                     self.conn.commit()
                     return []
             changes.append(
                 Change(
-                    r.orgnr, now, _classify(old_status, r.status),
-                    "status", old_status, r.status, r.name,
+                    r.orgnr, now, _classify(old_status, status),
+                    "status", old_status, status, r.name,
                 )
             )
-        elif old_status is None:
-            commit_status = True
 
         # SMP- og ELMA-endringer er uavhengige av status og krever ingen bekreftelse.
-        if r.status != Status.NOT_REGISTERED and old_status != Status.NOT_REGISTERED:
+        if status != Status.NOT_REGISTERED and old_status != Status.NOT_REGISTERED:
             if r.smp_url and row["smp_url"] and r.smp_url != row["smp_url"]:
                 changes.append(
                     Change(
@@ -377,17 +401,30 @@ class Store:
                     )
                 )
 
-        if commit_status:
-            self.conn.execute(
-                "UPDATE participant SET last_checked = ?, last_ok = ?, status = ?,"
-                " smp_url = ?, on_elma = ?, doctype_count = ?, can_receive_credit_note = ?,"
-                " pending_status = NULL, pending_count = 0, consecutive_errors = 0"
-                " WHERE orgnr = ?",
-                (
-                    now, now, r.status, r.smp_url, _bool(r.on_elma), r.doctype_count,
-                    int(r.can_receive_credit_note), r.orgnr,
-                ),
-            )
+        # En ventende SMP-regresjon står til en SMP-runde avgjør den; en
+        # dns-runde kan verken bekrefte eller avkrefte manglende fakturastøtte.
+        keep_pending = (
+            not r.verified
+            and row["pending_status"] == Status.REGISTERED_NO_INVOICE
+            and status == Status.CAN_RECEIVE
+        )
+        # Dokumenttype-feltene kommer fra SMP — en dns-runde vet ingenting om
+        # dem og skal ikke nullstille det SMP-runden fant.
+        doctypes = r.doctype_count if r.verified else row["doctype_count"]
+        credit = int(r.can_receive_credit_note) if r.verified else row["can_receive_credit_note"]
+
+        self.conn.execute(
+            "UPDATE participant SET last_checked = ?, last_ok = ?, status = ?,"
+            " smp_url = ?, on_elma = ?, doctype_count = ?, can_receive_credit_note = ?,"
+            " pending_status = ?, pending_count = ?, consecutive_errors = 0"
+            " WHERE orgnr = ?",
+            (
+                now, now, status, r.smp_url, _bool(r.on_elma), doctypes, credit,
+                row["pending_status"] if keep_pending else None,
+                row["pending_count"] if keep_pending else 0,
+                r.orgnr,
+            ),
+        )
         for change in changes:
             self._write_change(change, run_id)
         self.conn.commit()
@@ -513,12 +550,11 @@ class Store:
             "       COALESCE(NULLIF(p.brreg_name, ''), NULLIF(w.label, ''), '') AS name",
             "FROM change c",
             "JOIN participant p ON p.orgnr = c.orgnr",
-            "LEFT JOIN (SELECT orgnr, MIN(label) AS label FROM watch"
-            "           WHERE removed_at IS NULL AND label <> '' GROUP BY orgnr) w"
-            "  ON w.orgnr = c.orgnr",
-            "WHERE c.observed_at >= ?",
         ]
-        params: list[object] = [since]
+        params: list[object] = []
+        sql.append(_label_join(tenant, params))
+        sql.append("WHERE c.observed_at >= ?")
+        params.append(since)
         if tenant is not None:
             sql.append(
                 "AND c.orgnr IN (SELECT orgnr FROM watch"
@@ -641,12 +677,10 @@ class Store:
             "       COALESCE(NULLIF(p.brreg_name, ''), NULLIF(w.label, ''), '') AS name",
             "FROM change c",
             "JOIN participant p ON p.orgnr = c.orgnr",
-            "LEFT JOIN (SELECT orgnr, MIN(label) AS label FROM watch",
-            "           WHERE removed_at IS NULL AND label <> '' GROUP BY orgnr) w",
-            "  ON w.orgnr = c.orgnr",
-            "WHERE c.notified_at IS NULL",
         ]
         params: list[object] = []
+        sql.append(_label_join(tenant, params))
+        sql.append("WHERE c.notified_at IS NULL")
         if tenant is not None:
             sql.append(
                 "AND c.orgnr IN (SELECT orgnr FROM watch"
@@ -744,17 +778,50 @@ class Store:
 
     def import_watchlist(
         self, tenant: str, rows: Iterable[Sequence[str]], *, client_ref: str = ""
-    ) -> int:
-        """Bulk-innlesing av (orgnr, navn) — typisk en kundelisteeksport."""
+    ) -> tuple[int, list[str]]:
+        """Bulk-innlesing av (orgnr, navn) — typisk en kundelisteeksport.
+
+        Orgnr normaliseres her: «986 252 932» og «NO986252932MVA» er normalen i
+        eksporter fra regnskapssystemer. Uten normalisering havner råstrengen i
+        watch-tabellen mens observasjonene lagres på normalisert orgnr — da
+        bommer tenant-filteret stille på alle endringer, og motparten regnes
+        som «aldri sjekket» i hver eneste kjøring.
+
+        Returnerer (antall lagt til, rader med ugyldig orgnr).
+        """
         count = 0
+        invalid: list[str] = []
         for row in rows:
             if not row:
                 continue
+            try:
+                orgnr = normalise(row[0])
+            except InvalidOrgnr:
+                invalid.append(row[0])
+                continue
             self.watch(
-                tenant, row[0], client_ref=client_ref, label=row[1] if len(row) > 1 else ""
+                tenant, orgnr, client_ref=client_ref, label=row[1] if len(row) > 1 else ""
             )
             count += 1
-        return count
+        return count, invalid
+
+
+def _label_join(tenant: str | None, params: list[object]) -> str:
+    """LEFT JOIN som henter byråets egen etikett — og *bare* byråets egen.
+
+    Uten tenant-filteret her kunne byrå A fått byrå Bs interne merkelapp på en
+    felles motpart inn i sin digest. Med ``tenant=None`` (adminvisning) hentes
+    en vilkårlig etikett, som før.
+    """
+    scope = ""
+    if tenant is not None:
+        scope = " AND tenant = ?"
+        params.append(tenant)
+    return (
+        "LEFT JOIN (SELECT orgnr, MIN(label) AS label FROM watch"
+        f" WHERE removed_at IS NULL AND label <> ''{scope}"
+        " GROUP BY orgnr) w ON w.orgnr = c.orgnr"
+    )
 
 
 def _row_to_change(r: sqlite3.Row) -> Change:

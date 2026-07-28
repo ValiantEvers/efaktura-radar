@@ -94,3 +94,17 @@ def test_live_lookup_dfo() -> None:
     result = resolve_smp("986252932")
     assert result.registered
     assert result.on_elma
+
+
+def test_naptr_regexp_accepts_both_wildcard_forms() -> None:
+    """ELMA publiserer `!.*!…!` (verifisert live 2026-07-28), men RFC 4848
+    tillater også ankerformen `!^.*$!…!`. Begge må gi SMP-URL — ellers står en
+    fullt gyldig registrering som «utenfor ELMA», med falskt hastevarsel."""
+    from efaktura_radar.sml import _NAPTR_REPLACEMENT
+
+    live = '100 10 "U" "Meta:SMP" "!.*!https://smp.elma-smp.no/!" .'
+    rfc = '100 10 "U" "Meta:SMP" "!^.*$!https://smp.example.org/!" .'
+    m_live = _NAPTR_REPLACEMENT.search(live)
+    m_rfc = _NAPTR_REPLACEMENT.search(rfc)
+    assert m_live and m_live.group("url") == "https://smp.elma-smp.no/"
+    assert m_rfc and m_rfc.group("url") == "https://smp.example.org/"

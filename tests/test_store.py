@@ -214,8 +214,28 @@ def test_rewatch_reactivates(store: Store) -> None:
 
 def test_import_watchlist(store: Store) -> None:
     rows = [("986252932", "DFØ"), ("991825827", "Digdir")]
-    assert store.import_watchlist("byra-a", rows, client_ref="klient-1") == 2
+    assert store.import_watchlist("byra-a", rows, client_ref="klient-1") == (2, [])
     assert len(store.watched("byra-a")) == 2
+
+
+def test_import_watchlist_normalises_formatted_orgnr(store: Store) -> None:
+    """«986 252 932» og «NO…MVA» er normalen i eksporter fra regnskapssystemer.
+
+    Uten normalisering lagres råstrengen i watch-tabellen mens observasjonene
+    lagres på rent orgnr — da bommer tenant-filteret stille på alle endringer,
+    og motparten står som «aldri sjekket» i hver eneste kjøring.
+    """
+    count, invalid = store.import_watchlist(
+        "byra-a",
+        [("986 252 932", "DFØ"), ("NO991825827MVA", "Digdir"), ("123456789", "Feil")],
+    )
+    assert count == 2
+    assert invalid == ["123456789"]
+    assert store.watched("byra-a") == ["986252932", "991825827"]
+
+    store.record(result("986252932"))
+    assert len(store.changes_since("2000-01-01", tenant="byra-a")) == 1
+    assert store.coverage("byra-a").never_checked == 1  # kun Digdir gjenstår
 
 
 # --------------------------------------------------- regel 1: dekning
@@ -331,3 +351,83 @@ def test_store_creates_missing_parent_directory(tmp_path) -> None:  # type: igno
     with Store(target) as store:
         store.record(result())
     assert target.exists()
+
+
+# ------------------------------------------------- dns-runder mot SMP-status
+
+
+def _dns(status: str = Status.CAN_RECEIVE) -> CheckResult:
+    """Det en dns-runde produserer: en antakelse, ikke et verifisert svar."""
+    return CheckResult(
+        "986252932", "DFØ", status,
+        smp_url="https://smp.elma-smp.no/", on_elma=True, verified=False,
+    )
+
+
+def _smp(status: str, doctypes: int = 4) -> CheckResult:
+    """Det en full runde produserer: SMP-svaret er faktisk lest."""
+    return CheckResult(
+        "986252932", "DFØ", status,
+        smp_url="https://smp.elma-smp.no/", on_elma=True,
+        doctype_count=doctypes, can_receive_credit_note=True, verified=True,
+    )
+
+
+def test_dns_run_cannot_refute_missing_invoice_support(store: Store) -> None:
+    """Søndagens SMP-runde så at fakturastøtten mangler. Mandagens dns-runde
+    ser ikke dokumenttyper og skal verken nullstille den ventende regresjonen
+    eller bekrefte den — neste SMP-runde avgjør."""
+    store.record(_smp(Status.CAN_RECEIVE))
+    assert store.record(_smp(Status.REGISTERED_NO_INVOICE)) == []  # 1 av 2
+    assert store.record(_dns()) == [], "dns-runden har ingen mening om dokumenttyper"
+    confirmed = store.record(_smp(Status.REGISTERED_NO_INVOICE))  # 2 av 2
+    assert [c.kind for c in confirmed] == [ChangeKind.LOST_INVOICE]
+
+
+def test_dns_run_does_not_invent_gained_invoice() -> None:
+    """Falske gode nyheter er også falske alarmer."""
+    immediate = Store(":memory:", confirmations=1)
+    immediate.record(_smp(Status.REGISTERED_NO_INVOICE))
+    assert immediate.record(_dns()) == [], "dns-runden har ikke sett noen dokumenttyper"
+    row = immediate.conn.execute("SELECT status, doctype_count FROM participant").fetchone()
+    assert row["status"] == Status.REGISTERED_NO_INVOICE
+    assert row["doctype_count"] == 4, "SMP-rundens funn skal ikke nullstilles"
+
+
+def test_verified_improvement_still_logs_gained_invoice() -> None:
+    immediate = Store(":memory:", confirmations=1)
+    immediate.record(_smp(Status.REGISTERED_NO_INVOICE))
+    changes = immediate.record(_smp(Status.CAN_RECEIVE))
+    assert [c.kind for c in changes] == [ChangeKind.GAINED_INVOICE]
+
+
+def test_verified_nxdomain_still_confirms_deregistration(store: Store) -> None:
+    """NXDOMAIN er autoritativt uansett rundetype — dereg-flyten er som før."""
+    store.record(_dns())
+    gone = CheckResult("986252932", "DFØ", Status.NOT_REGISTERED, verified=True)
+    assert store.record(gone) == []
+    assert [c.kind for c in store.record(gone)] == [ChangeKind.DEREGISTERED]
+
+
+def test_first_status_after_error_is_logged_as_new(store: Store) -> None:
+    """Første kontakt var en timeout. Den første vellykkede sjekken ER
+    førsteobservasjonen — uten den mangler tidsserien sitt ankerpunkt og
+    status_at() svarer None for alltid."""
+    store.record(CheckResult("986252932", "DFØ", Status.ERROR, error="Timeout"))
+    changes = store.record(result())
+    assert [c.kind for c in changes] == [ChangeKind.NEW_CAN_RECEIVE]
+    assert store.status_at("986252932", utc_now()) == Status.CAN_RECEIVE
+
+
+def test_labels_do_not_leak_between_tenants(store: Store) -> None:
+    """Etiketten er byråets egen. Byrå A skal aldri se byrå Bs internnavn på
+    en motpart de tilfeldigvis begge følger."""
+    store.watch("byra-a", "986252932")
+    store.watch("byra-b", "986252932", label="VIP — purres ofte")
+    store.record(result("986252932", name=""))
+
+    assert store.changes_since("2000-01-01", tenant="byra-a")[0].name == ""
+    assert store.changes_since("2000-01-01", tenant="byra-b")[0].name == "VIP — purres ofte"
+    assert store.unnotified(tenant="byra-a")[0].name == ""
+    # Uten tenant (adminvisning) er en vilkårlig etikett fortsatt greit.
+    assert store.changes_since("2000-01-01")[0].name == "VIP — purres ofte"

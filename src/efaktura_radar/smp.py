@@ -29,6 +29,7 @@ from .sml import participant_id
 __all__ = [
     "NS",
     "ServiceGroup",
+    "endpoint_is_active",
     "fetch_service_group",
     "parse_service_group",
     "service_group_url",

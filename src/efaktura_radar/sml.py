@@ -66,7 +66,10 @@ EC_SUNSET = date(2026, 8, 31)
 #: U-NAPTR service-feltet. Spesifikasjonen tillater ingen andre verdier.
 NAPTR_SERVICE = "Meta:SMP"
 
-_NAPTR_REPLACEMENT = re.compile(r'!\.\*!(?P<url>[^!]+)!', re.IGNORECASE)
+#: ELMA publiserer `!.*!<url>!` (verifisert live 2026-07-28), men RFC 4848
+#: tillater også ankerformen `!^.*$!<url>!`. Godta begge — en SMP som bruker
+#: RFC-formen ville ellers gitt smp_url=None og dermed falsk «forlot_elma».
+_NAPTR_REPLACEMENT = re.compile(r'!\^?\.\*\$?!(?P<url>[^!]+)!', re.IGNORECASE)
 
 
 @dataclass(frozen=True, slots=True)

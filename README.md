@@ -6,7 +6,7 @@ og SMP (HTTPS). Ingen API-nøkkel, ingen registrering, ingen avtale med noen.
 Teknisk spike for e-fakturaplikten i **bokføringsloven § 10 annet ledd**
 (lov 19. juni 2026 nr. 39), som trer i kraft **1. januar 2027**.
 
-**Status: verifisert live 2026-07-27.** 102 enhetstester grønne, ruff og mypy
+**Status: verifisert live 2026-07-27.** 116 enhetstester grønne, ruff og mypy
 strict rene, hele kjeden kjørt ende-til-ende mot ekte DNS på 38 reelle
 Oslo-selskaper.
 
@@ -87,7 +87,7 @@ $ efaktura-radar status --db radar.db --byra "Nordvik Regnskap AS"
 Tester:
 
 ```bash
-pytest -m "not live"   # 102 tester, ingen nettverk
+pytest -m "not live"   # 116 tester, ingen nettverk
 pytest -m live         # krever DNS
 ruff check . && mypy
 ```

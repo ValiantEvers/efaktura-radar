@@ -118,9 +118,17 @@ def _cmd_folg(args: argparse.Namespace) -> int:
     """Les en kundeliste inn i overvåkningslista."""
     rows = _read_rows(args.fil)
     with Store(args.db) as store:
-        count = store.import_watchlist(args.byra, rows, client_ref=args.klient)
+        count, invalid = store.import_watchlist(args.byra, rows, client_ref=args.klient)
         total = len(store.watched(args.byra))
     print(f"La til {count} motparter. {args.byra} følger nå {total} totalt.", file=sys.stderr)
+    if invalid:
+        print(
+            f"{len(invalid)} rader hadde ugyldig orgnr og ble hoppet over:", file=sys.stderr
+        )
+        for raw in invalid[:10]:
+            print(f"  {raw!r}", file=sys.stderr)
+        if len(invalid) > 10:
+            print(f"  … og {len(invalid) - 10} til.", file=sys.stderr)
     return 0
 
 

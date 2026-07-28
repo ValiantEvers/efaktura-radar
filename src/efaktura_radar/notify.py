@@ -194,17 +194,21 @@ def notify(
         sink.send(f"[radar] Ingen ferske data — {tenant}", stale)
 
     report_urgent = 0
+    marked = 0
     urgent = store.unnotified(tenant=tenant, kinds=ChangeKind.URGENT)
     if urgent:
         sink.send(
             f"[radar] {len(urgent)} kunder krever handling — {tenant}",
             _urgent_body(urgent, tenant),
         )
+        # Merkes FØRST etter at sendingen faktisk gikk gjennom — men STRAKS
+        # etter. Venter vi til etter digesten, vil en digest-feil sende de
+        # samme hastevarslene på nytt i morgen. Én endring, ett varsel.
+        marked += store.mark_notified(urgent)
         report_urgent = len(urgent)
 
     # Digesten går bare på den avtalte ukedagen, og bare hvis noe har skjedd.
     report_digest = 0
-    rest: list[Change] = []
     if digest_weekday is not None and datetime.now(UTC).isoweekday() == digest_weekday:
         rest = [
             c
@@ -215,10 +219,9 @@ def notify(
             sink.send(
                 f"[radar] Ukesoppdatering — {tenant}", _digest_body(rest, store, tenant)
             )
+            marked += store.mark_notified(rest)
             report_digest = len(rest)
 
-    # Merkes FØRST etter at sendingen faktisk gikk gjennom.
-    marked = store.mark_notified([*urgent, *rest])
     return NotifyReport(report_urgent, report_digest, marked)
 
 

@@ -47,6 +47,10 @@ class CheckResult:
     can_receive_credit_note: bool = False
     other_capabilities: str = ""
     error: str | None = None
+    #: Sant når statusen er avgjort, ikke antatt: SMP-svaret er lest, eller DNS
+    #: sa NXDOMAIN. Et dns-only «kan_motta» er en antakelse — lagringslaget må
+    #: vite forskjellen, ellers overskriver antakelsen det SMP-runden faktisk så.
+    verified: bool = False
 
     def as_row(self) -> dict[str, object]:
         return asdict(self)
@@ -70,7 +74,8 @@ def check(
     if sml.error:
         return CheckResult(clean, name, Status.ERROR, error=sml.error)
     if not sml.registered:
-        return CheckResult(clean, name, Status.NOT_REGISTERED)
+        # NXDOMAIN er autoritativt: ikke registrert hos noen SMP.
+        return CheckResult(clean, name, Status.NOT_REGISTERED, verified=True)
 
     base = CheckResult(
         orgnr=clean,
@@ -88,8 +93,14 @@ def check(
     try:
         group = fetch_service_group(sml.smp_url, clean, client=client, timeout=timeout)
     except httpx.HTTPError as exc:
+        # Regel 3: en HTTP-feil er ikke en observasjon. Uten dette ville en
+        # SMP-timeout blitt lagret som et fullverdig «kan_motta» — og kunne
+        # både nullstilt en ventende regresjon og utløst falsk «fikk_fakturastotte».
+        base.status = Status.ERROR
         base.error = type(exc).__name__
         return base
+
+    base.verified = True
 
     if group is None:
         # DNS sier registrert, SMP sier 404. Reell inkonsistens — verdt å logge.

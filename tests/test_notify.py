@@ -254,3 +254,41 @@ def test_healthy_run_after_anomaly_resumes_notifications() -> None:
 
     report = notify(store, tenant="byra-a", sink=sink, digest_weekday=None)
     assert report.urgent_sent == 1
+
+
+class FlakySink(Sink):
+    """Første sending lykkes, deretter feiler alt — som når digesten ryker
+    rett etter at hastevarselet gikk gjennom."""
+
+    def __init__(self) -> None:
+        self.sent: list[tuple[str, str]] = []
+
+    def send(self, subject: str, body: str) -> None:
+        if self.sent:
+            raise RuntimeError("SMTP nede")
+        self.sent.append((subject, body))
+
+
+def test_digest_failure_does_not_resend_urgent() -> None:
+    """Hastevarselet gikk gjennom; digesten feilet. I morgen skal bare
+    digest-endringene prøves på nytt — ikke hastevarselet én gang til."""
+    from datetime import UTC, datetime
+
+    store, _ = _store_with_deregistration()
+    # Én ikke-hastende endring til digesten.
+    store.watch("byra-a", "991825827", label="Digdir")
+    store.record(_res("991825827", status=Status.NOT_REGISTERED, smp=None, elma=None))
+
+    flaky = FlakySink()
+    with contextlib.suppress(RuntimeError):
+        notify(
+            store, tenant="byra-a", sink=flaky,
+            digest_weekday=datetime.now(UTC).isoweekday(),
+        )
+
+    assert len(flaky.sent) == 1 and "krever handling" in flaky.sent[0][0]
+    # Hastevarselet er merket som sendt; bare de to ikke-hastende endringene
+    # (ny_kan_motta for DFØ, ny_kan_ikke_motta for Digdir) står igjen til
+    # neste digest-forsøk.
+    assert store.unnotified(tenant="byra-a", kinds=ChangeKind.URGENT) == []
+    assert len(store.unnotified(tenant="byra-a")) == 2
