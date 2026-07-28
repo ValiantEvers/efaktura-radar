@@ -1,0 +1,175 @@
+name: radar
+
+# Samler EHF-statushistorikk. Historikken kan ikke rekonstrueres i etterkant,
+# så det viktigste denne filen gjør er å kjøre hver dag uten tilsyn.
+#
+# Basen committes tilbake til repoet. Det er samme mønster som ValiantEvers.github.io
+# bruker for dist/, og gir gratis versjonert backup av det som faktisk er produktet.
+
+on:
+  schedule:
+    # 04:17 UTC = 06:17 norsk sommertid, 05:17 vintertid.
+    # Skjeve minutter med vilje: GitHub forsinker kjøringer som ligger på hel time.
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+    inputs:
+      full:
+        description: "Ta med SMP-oppslag (ikke bare DNS)"
+        type: boolean
+        default: false
+      berik:
+        description: "Hent registerdata fra Enhetsregisteret"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+# Aldri to skrivinger til samme SQLite-fil samtidig. cancel-in-progress må stå
+# på false — å avbryte midt i en skriving er verre enn å vente.
+concurrency:
+  group: radar
+  cancel-in-progress: false
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Installer
+        run: pip install -e .
+
+      - name: Sjekk at NAPTR-oppslag virker på runneren
+        # Fail fast med en lesbar beskjed. Uten DNS er resten meningsløst, og
+        # NAPTR er en uvanlig nok posttype til at det er verdt å bekrefte.
+        run: |
+          python - <<'PY'
+          import sys
+          from efaktura_radar.sml import resolve_smp
+          r = resolve_smp("986252932")
+          if not r.registered:
+              print(f"::error::NAPTR-oppslag feilet ({r.error or 'NXDOMAIN'}). "
+                    f"Runneren når ikke {r.hostname}", file=sys.stderr)
+              raise SystemExit(1)
+          print(f"OK — DFØ svarer fra {r.smp_url}")
+          PY
+
+      - name: Daglig runde (DNS)
+        # Sluttkode 3 = sikkerhetsventilen forkastet kjøringen. Det er ikke en
+        # krasj, og varslingssteget skal fortsatt få gå.
+        run: |
+          set +e
+          efaktura-radar kjor \
+            --db data/radar.db \
+            --byra "${{ vars.BYRA || 'standard' }}" \
+            --intervall 20 \
+            --antall 2000 \
+            2>&1 | tee -a run.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" = "3" ]; then
+            echo "::warning::Kjøringen ble forkastet av sikkerhetsventilen."
+          elif [ "$code" != "0" ]; then
+            exit "$code"
+          fi
+
+      - name: Ukentlig runde med SMP
+        # Søndag, eller manuelt. Bekrefter at det faktisk er faktura de kan motta.
+        continue-on-error: true
+        run: |
+          if [ "$(date -u +%u)" = "7" ] || [ "${{ inputs.full }}" = "true" ]; then
+            efaktura-radar kjor \
+              --db data/radar.db \
+              --byra "${{ vars.BYRA || 'standard' }}" \
+              --full --intervall 0 --antall 500 --parallell 4 \
+              2>&1 | tee -a run.log
+          else
+            echo "Ikke søndag — hopper over SMP-runden."
+          fi
+
+      - name: Månedlig berikelse
+        continue-on-error: true
+        run: |
+          if [ "$(date -u +%d)" = "01" ] || [ "${{ inputs.berik }}" = "true" ]; then
+            efaktura-radar berik \
+              --db data/radar.db \
+              --byra "${{ vars.BYRA || 'standard' }}" \
+              2>&1 | tee -a run.log
+          else
+            echo "Ikke den 1. — hopper over berikelsen."
+          fi
+
+      - name: Varsle
+        # Leser selv om siste kjøring ble forkastet. Uten hemmeligheter satt
+        # skriver den til konsollen, som er riktig oppførsel før første kunde.
+        env:
+          RADAR_WEBHOOK_URL: ${{ secrets.RADAR_WEBHOOK_URL }}
+          RADAR_SMTP_HOST: ${{ secrets.RADAR_SMTP_HOST }}
+          RADAR_SMTP_PORT: ${{ secrets.RADAR_SMTP_PORT }}
+          RADAR_SMTP_USER: ${{ secrets.RADAR_SMTP_USER }}
+          RADAR_SMTP_PASS: ${{ secrets.RADAR_SMTP_PASS }}
+          RADAR_SMTP_FROM: ${{ secrets.RADAR_SMTP_FROM }}
+          RADAR_SMTP_TO: ${{ secrets.RADAR_SMTP_TO }}
+        run: |
+          efaktura-radar varsle \
+            --db data/radar.db \
+            --byra "${{ vars.BYRA || 'standard' }}" \
+            --digest-dag "${{ vars.DIGEST_DAG || '1' }}" \
+            2>&1 | tee -a run.log
+
+      - name: Eksporter diffbare CSV-er
+        # WAL skylles her. Uten det ligger ferske skrivinger i sidefila og
+        # basen som committes blir ufullstendig.
+        run: efaktura-radar eksport --db data/radar.db --ut-dir data
+
+      - name: Skriv sammendrag
+        run: |
+          {
+            echo "## E-fakturaradar $(date -u +%Y-%m-%d)"
+            echo
+            echo '```'
+            efaktura-radar status --db data/radar.db --byra "${{ vars.BYRA || 'standard' }}"
+            echo '```'
+            echo
+            echo "### Endringer siste 7 dager"
+            echo '```'
+            efaktura-radar endringer --db data/radar.db --byra "${{ vars.BYRA || 'standard' }}" --dager 7
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Advar hvis planlagte kjøringer snart deaktiveres
+        # GitHub slår av schedule-utløsere etter 60 dager uten aktivitet i repoet,
+        # og push med GITHUB_TOKEN teller ikke. Det er den mest sannsynlige måten
+        # denne innsamlingen dør stille på.
+        run: |
+          # --invert-grep gjelder --grep, ikke --author. Negativ lookahead er
+          # den eneste måten å ekskludere en forfatter på.
+          last_human=$(git log -1 --format=%ct --perl-regexp \
+            --author='^(?!github-actions)' || true)
+          last_human=${last_human:-0}
+          if [ "$last_human" != "0" ]; then
+            days=$(( ( $(date +%s) - last_human ) / 86400 ))
+            echo "Dager siden siste menneskelige commit: $days"
+            if [ "$days" -gt 45 ]; then
+              echo "::warning::$days dager siden siste menneskelige commit. GitHub deaktiverer planlagte kjøringer etter 60. Push noe, eller bytt til en PAT i checkout-steget."
+              echo "> ⚠️ **$days dager** siden siste menneskelige commit — planlagte kjøringer deaktiveres etter 60." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --staged --quiet; then
+            echo "Ingen endringer å committe."
+            exit 0
+          fi
+          git commit -m "radar: $(date -u +%Y-%m-%d) [skip ci]"
+          git push

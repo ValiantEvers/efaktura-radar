@@ -1,0 +1,34 @@
+[project]
+name = "efaktura-radar"
+version = "0.1.0"
+description = "Sjekk hvem som kan motta EHF-faktura, mot Peppol SML og SMP"
+requires-python = ">=3.13"
+license = "MIT"
+dependencies = ["dnspython>=2.6", "httpx>=0.27"]
+
+[project.scripts]
+efaktura-radar = "efaktura_radar.cli:main"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["live: krever nettverk (DNS/HTTPS)"]

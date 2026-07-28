@@ -1,0 +1,6 @@
+# SQLite-basen er binær — ikke la git prøve linjeskift-normalisering.
+data/*.db binary
+data/*.db-wal binary
+data/*.db-shm binary
+# CSV-ene skal diffe rent i GitHub-grensesnittet.
+data/*.csv text eol=lf

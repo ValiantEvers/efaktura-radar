@@ -1,0 +1,14 @@
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.csv
+!tests/fixtures/*.csv
+!eksempel/*.csv
+!data/*.csv
+# Basen ligger i data/ og skal committes — men aldri WAL-sidefilene.
+*.db-wal
+*.db-shm
+run.log

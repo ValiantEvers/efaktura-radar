@@ -1,0 +1,24 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: pip install -e . ruff mypy pytest
+      - run: ruff check .
+      - run: mypy
+      # Live-testene krever nett og treffer tredjeparts infrastruktur.
+      # De kjøres bevisst ikke i CI.
+      - run: pytest -q -m "not live"
