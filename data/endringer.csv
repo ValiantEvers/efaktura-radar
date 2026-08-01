@@ -1,39 +1,39 @@
 observed_at;orgnr;navn;kind;field;old_value;new_value
-2026-07-29T06:47:45+00:00;878703812;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;913864581;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;832950602;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;879946492;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;897392232;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;925273236;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;910082620;;ny_kan_ikke_motta;status;;ikke_registrert
-2026-07-29T06:47:45+00:00;918272518;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;830854142;;ny_kan_ikke_motta;status;;ikke_registrert
-2026-07-29T06:47:45+00:00;921934092;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;918124934;;ny_kan_ikke_motta;status;;ikke_registrert
-2026-07-29T06:47:45+00:00;930327581;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;918616381;;ny_kan_ikke_motta;status;;ikke_registrert
-2026-07-29T06:47:45+00:00;930459615;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;932467771;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;928470679;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;934910788;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;929431650;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;931474375;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;936488358;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;929032470;;ny_kan_ikke_motta;status;;ikke_registrert
-2026-07-29T06:47:45+00:00;934936124;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;980026035;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;935435331;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;987428317;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;929624483;;ny_kan_ikke_motta;status;;ikke_registrert
-2026-07-29T06:47:45+00:00;989298291;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;989575716;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;961029775;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;990145687;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;994151010;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;989890832;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;998246202;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;995453975;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;999286976;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;998781558;;ny_kan_motta;status;;kan_motta
-2026-07-29T06:47:45+00:00;952257145;;ny_kan_ikke_motta;status;;ikke_registrert
-2026-07-29T06:47:45+00:00;922361754;;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;878703812;3 STEP IT AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;913864581;A-TEAM TRAFIKKSKOLE AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;832950602;2CE NAIL BEAUTY AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;879946492;A C SMITH & CO AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;897392232;4SERVICE GRUPPEN AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;925273236;1 HJELPENDE HÅND AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;910082620;A-MØBLER AS;ny_kan_ikke_motta;status;;ikke_registrert
+2026-07-29T06:47:45+00:00;918272518;A-Z BYGGESERVICE IDCZAK AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;830854142;A DAY'S MARCH SHIRTS & STAPLES NORWAY AS;ny_kan_ikke_motta;status;;ikke_registrert
+2026-07-29T06:47:45+00:00;921934092;4B ARKITEKTER AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;918124934;1881 GROUP AS;ny_kan_ikke_motta;status;;ikke_registrert
+2026-07-29T06:47:45+00:00;930327581;A. A DAGLIGVARE AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;918616381;123 FLYTTING & TRANSPORT AS;ny_kan_ikke_motta;status;;ikke_registrert
+2026-07-29T06:47:45+00:00;930459615;1850 NUMMEROPPLYSNINGEN AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;932467771;A-LI DRONNINGEN AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;928470679;90 GRADER AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;934910788;7 DAYS MINI MARKED AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;929431650;0186 BARDRIFT AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;931474375;852YUMCHA AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;936488358;9COELEKTRO AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;929032470;1 OSLO RENHOLDSSERVICE AS;ny_kan_ikke_motta;status;;ikke_registrert
+2026-07-29T06:47:45+00:00;934936124;2IZII AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;980026035;A LA CARTE PRODUKTER AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;935435331;1INCH INNREDNING AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;987428317;180.NO NUMMEROPPLYSNINGEN AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;929624483;8586 SUSHI & WOK AS;ny_kan_ikke_motta;status;;ikke_registrert
+2026-07-29T06:47:45+00:00;989298291;4HUMAN QM365 AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;989575716;A BYGG ENTREPRENØR AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;961029775;A-BAD AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;990145687;A  TIL  Å  SERVICE  AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;994151010;0 - 6 ULLENSAKERGATA BARNEHAGE AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;989890832;99X SOLUTIONS AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;998246202;A-B BYGG OG MALERTJENESTE AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;995453975;24FITNESS AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;999286976;0 - 6 VÅLERENGGATA BARNEHAGE AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;998781558;10/10 TEKSTILTRYKKERI AS;ny_kan_motta;status;;kan_motta
+2026-07-29T06:47:45+00:00;952257145;A T KEARNEY AS;ny_kan_ikke_motta;status;;ikke_registrert
+2026-07-29T06:47:45+00:00;922361754;8 FISH SUSHI AS;ny_kan_motta;status;;kan_motta
