@@ -6,6 +6,15 @@ requires-python = ">=3.13"
 license = "MIT"
 dependencies = ["dnspython>=2.6", "httpx>=0.27"]
 
+# Verktøyene under er konfigurert i denne fila, men var ikke installerbare før 2026-08-16 —
+# `pip install -e .` ga ingen pytest, så de ni testfilene hadde aldri kjørt på maskinen.
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
 [project.scripts]
 efaktura-radar = "efaktura_radar.cli:main"
 
