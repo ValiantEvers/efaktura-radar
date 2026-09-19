@@ -38,3 +38,4 @@ observed_at;orgnr;navn;kind;field;old_value;new_value
 2026-07-29T06:47:45+00:00;952257145;A T KEARNEY AS;ny_kan_ikke_motta;status;;ikke_registrert
 2026-07-29T06:47:45+00:00;922361754;8 FISH SUSHI AS;ny_kan_motta;status;;kan_motta
 2026-09-17T09:29:40+00:00;935435331;1INCH INNREDNING AS;avregistrert;status;kan_motta;ikke_registrert
+2026-09-19T08:50:30+00:00;935435331;1INCH INNREDNING AS;registrert;status;ikke_registrert;kan_motta
