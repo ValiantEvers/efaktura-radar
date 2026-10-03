@@ -367,15 +367,15 @@ Teksten ligger i `brreg.ATTRIBUTION` og er allerede med i `format_digest`.
 
 ## Automatisering
 
-`.github/workflows/radar.yml` kjører daglig 04:17 UTC og committer basen tilbake
+`.github/workflows/radar.yml` kjører hver søndag 04:17 UTC (daglig fram til 2026-10-03) og committer basen tilbake
 til repoet. Samme mønster som `ValiantEvers.github.io` bruker for `dist/`, og
 det gir gratis versjonert backup av det som faktisk er produktet.
 
 | Når | Hva |
 |---|---|
-| Daglig | `kjor` — DNS-runde, ~2 000 motparter, deretter `varsle` |
-| Søndag | `kjor --full` — bekrefter fakturastøtte via SMP |
-| Den 1. | `berik` — Enhetsregisteret |
+| Hver søndag | `kjor` — DNS-runde, ~2 000 motparter, deretter `varsle` |
+| Hver søndag | `kjor --full` — bekrefter fakturastøtte via SMP |
+| Første søndag i måneden | `berik` — Enhetsregisteret |
 | Hver gang | `eksport` → `data/endringer.csv` og `data/status.csv` |
 
 `data/*.csv` differ rent i GitHub-grensesnittet, så du ser historikken uten å

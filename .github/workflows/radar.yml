@@ -10,7 +10,9 @@ on:
   schedule:
     # 04:17 UTC = 06:17 norsk sommertid, 05:17 vintertid.
     # Skjeve minutter med vilje: GitHub forsinker kjøringer som ligger på hel time.
-    - cron: "17 4 * * *"
+    # Ukentlig (søndag) fra 2026-10-03 — var daglig, ~1 commit/dag var mer støy enn signal
+    # for en spike. Søndag så SMP-runden fortsatt går; berikelsen går første søndag i måneden.
+    - cron: "17 4 * * 0"
   workflow_dispatch:
     inputs:
       full:
@@ -96,13 +98,13 @@ jobs:
       - name: Månedlig berikelse
         continue-on-error: true
         run: |
-          if [ "$(date -u +%d)" = "01" ] || [ "${{ inputs.berik }}" = "true" ]; then
+          if [ "$(date -u +%d)" -le 7 ] || [ "${{ inputs.berik }}" = "true" ]; then
             efaktura-radar berik \
               --db data/radar.db \
               --byra "${{ vars.BYRA || 'standard' }}" \
               2>&1 | tee -a run.log
           else
-            echo "Ikke den 1. — hopper over berikelsen."
+            echo "Ikke første søndag i måneden — hopper over berikelsen."
           fi
 
       - name: Varsle
