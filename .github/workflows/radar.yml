@@ -40,6 +40,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Full historikk: 60-dagersvarselet nederst leter etter siste
+          # menneskelige commit. Med standard dybde 1 ser det bare forrige
+          # bot-commit og sier aldri ifra.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v6
         with:

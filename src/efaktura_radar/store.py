@@ -639,11 +639,14 @@ class Store:
         ).fetchone()
         return None if row is None else str(row["finished_at"])
 
-    def due(self, tenant: str | None = None, *, before: str, limit: int = 10_000) -> list[str]:
+    def due(
+        self, tenant: str | None = None, *, before: str | None, limit: int = 10_000
+    ) -> list[str]:
         """Hvem står for tur? Aldri sjekket først, deretter eldst.
 
         Lar cron-jobben spre 5 000 motparter utover uka i stedet for å slå
-        mot samme SMP i én støt.
+        mot samme SMP i én støt. ``before=None`` betyr ingen cutoff: alle
+        overvåkede, i samme rekkefølge.
         """
         watched = self.watched(tenant)
         if not watched:
@@ -658,7 +661,11 @@ class Store:
         }
         never = [o for o in watched if known.get(o) is None]
         stale = sorted(
-            (o for o in watched if (t := known.get(o)) is not None and t < before),
+            (
+                o
+                for o in watched
+                if (t := known.get(o)) is not None and (before is None or t < before)
+            ),
             key=lambda o: str(known[o]),
         )
         return (never + stale)[:limit]

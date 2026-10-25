@@ -97,11 +97,17 @@ def run_once(
     faktisk er *faktura* de kan motta.
     """
     guard = guard or AnomalyGuard()
-    cutoff = (
-        (datetime.now(UTC) - timedelta(hours=stale_after_hours))
-        .replace(microsecond=0)
-        .isoformat()
-    )
+    # 0 eller mindre betyr «alle overvåkede nå», uten cutoff. En cutoff på
+    # sekundnivå bommer når forrige runde skrev last_checked i samme sekund:
+    # `last_checked < cutoff` blir usann, og SMP-runden rett etter DNS-runden
+    # i radar.yml sjekket 0 motparter i 10 av 12 uker (2026-08-02..10-18).
+    cutoff: str | None = None
+    if stale_after_hours > 0:
+        cutoff = (
+            (datetime.now(UTC) - timedelta(hours=stale_after_hours))
+            .replace(microsecond=0)
+            .isoformat()
+        )
     due = store.due(tenant, before=cutoff, limit=batch_size)
 
     mode = "dns" if dns_only else "dns+smp"

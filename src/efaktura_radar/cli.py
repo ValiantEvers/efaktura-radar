@@ -293,7 +293,10 @@ def main(argv: list[str] | None = None) -> int:
 
     run = _with_db(sub.add_parser("kjor", help="én overvåkingsrunde (kall denne fra cron)"))
     run.add_argument("--full", action="store_true", help="ta med SMP-oppslag, ikke bare DNS")
-    run.add_argument("--intervall", type=int, default=24, help="timer før en rad er utdatert")
+    run.add_argument(
+        "--intervall", type=int, default=24,
+        help="timer før en rad er utdatert (0 = alle overvåkede)",
+    )
     run.add_argument("--antall", type=int, default=1000, help="maks per kjøring")
     run.add_argument("--parallell", type=int, default=8)
     run.add_argument(
